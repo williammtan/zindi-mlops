@@ -1,6 +1,5 @@
 """Kserve inference script."""
 
-import argparse
 from kserve import (
     Model,
     ModelServer,
@@ -11,25 +10,24 @@ from kserve import (
 )
 from kserve.utils.utils import generate_uuid
 from transformers import AutoTokenizer
-from transformers import TFAutoModelForSeq2SeqLM
+from transformers import AutoModelForSeq2SeqLM
 
 
 class MachineTranslation(Model):
     """Kserve inference implementation of model."""
 
-    def __init__(self, name: str, protocol: str):
+    def __init__(self, name: str):
         """Initialise model."""
         super().__init__(name)
         self.model = None
         self.tokenizer = None
-        self.protocol = protocol
         self.ready = False
         self.load()
 
     def load(self):
-        """Reconstitute model from disk."""
-        self.tokenizer = AutoTokenizer.from_pretrained("williammtan/nllb-200-distilled-600M_dyu-fra")
-        self.model = TFAutoModelForSeq2SeqLM.from_pretrained("williammtan/nllb-200-distilled-600M_dyu-fra")
+        """Reconstitute model from huggingface."""
+        self.tokenizer = AutoTokenizer.from_pretrained("williamhtan/nllb-200-distilled-600M_dyu-fra")
+        self.model = AutoModelForSeq2SeqLM.from_pretrained("williamhtan/nllb-200-distilled-600M_dyu-fra")
         self.ready = True
 
     def predict(self, payload: InferRequest, *args, **kwargs) -> InferResponse:
@@ -56,11 +54,11 @@ class MachineTranslation(Model):
         return infer_response
 
 
-parser = argparse.ArgumentParser(parents=[model_server.parser])
-parser.add_argument("--protocol", help="The protocol for the predictor", default="v2")
-parser.add_argument("--model_name", help="The name that the model is served under.")
-args, _ = parser.parse_known_args()
+# parser = argparse.ArgumentParser(parents=[model_server.parser])
+# parser.add_argument("--protocol", help="The protocol for the predictor", default="v2")
+# parser.add_argument("--model_name", help="The name that the model is served under.")
+# args, _ = parser.parse_known_args()
 
 if __name__ == "__main__":
-    model = MachineTranslation(args.model_name, protocol=args.protocol)
+    model = MachineTranslation("nllb-600m")
     ModelServer().start([model])
