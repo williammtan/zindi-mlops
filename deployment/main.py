@@ -37,10 +37,10 @@ class MachineTranslation(Model):
 
         response_id = generate_uuid()
         inputs = self.tokenizer(
-            payload.inputs[0].data[0], return_tensors="pt"
+            payload.inputs[0].data[0], return_tensors="pt", max_length=64, truncation=True, padding=True
         )["input_ids"]
         outputs = self.model.generate(
-            inputs, max_new_tokens=40
+            inputs, max_length=64, forced_bos_token_id=self.tokenizer.convert_tokens_to_ids("fra_Latn")
             # , do_sample=True, top_k=30, top_p=0.95
         )
         translated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
