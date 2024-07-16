@@ -1,5 +1,6 @@
 """Kserve inference script."""
 
+import argparse
 from kserve import (
     Model,
     ModelServer,
@@ -12,6 +13,7 @@ from kserve.utils.utils import generate_uuid
 from transformers import AutoTokenizer
 from transformers import AutoModelForSeq2SeqLM
 
+HF_MODEL_NAME = "./saved_model/"
 
 class MachineTranslation(Model):
     """Kserve inference implementation of model."""
@@ -26,22 +28,29 @@ class MachineTranslation(Model):
 
     def load(self):
         """Reconstitute model from huggingface."""
-        self.tokenizer = AutoTokenizer.from_pretrained("williamhtan/nllb-200-distilled-600M_dyu-fra")
-        self.model = AutoModelForSeq2SeqLM.from_pretrained("williamhtan/nllb-200-distilled-600M_dyu-fra")
+        print("Loading models...")
+        self.tokenizer = AutoTokenizer.from_pretrained(HF_MODEL_NAME)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(HF_MODEL_NAME)
+        print("Models loaded!")
         self.ready = True
 
-    def predict(self, payload: InferRequest, *args, **kwargs) -> InferResponse:
+    def predict(self, payload: InferRequest, *_args, **_kwargs) -> InferResponse:
         """Pass inference request to model to make prediction."""
         print("Starting predict..")
         print(f"{payload.inputs[0].data[0]}")
 
         response_id = generate_uuid()
         inputs = self.tokenizer(
-            payload.inputs[0].data[0], return_tensors="pt", max_length=64, truncation=True, padding=True
+            payload.inputs[0].data[0],
+            return_tensors="pt",
+            max_length=64,
+            truncation=True,
+            padding=True
         )["input_ids"]
         outputs = self.model.generate(
-            inputs, max_length=64, forced_bos_token_id=self.tokenizer.convert_tokens_to_ids("fra_Latn")
-            # , do_sample=True, top_k=30, top_p=0.95
+            inputs,
+            max_length=64,
+            forced_bos_token_id=self.tokenizer.convert_tokens_to_ids("fra_Latn")
         )
         translated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
@@ -54,11 +63,12 @@ class MachineTranslation(Model):
         return infer_response
 
 
-# parser = argparse.ArgumentParser(parents=[model_server.parser])
-# parser.add_argument("--protocol", help="The protocol for the predictor", default="v2")
-# parser.add_argument("--model_name", help="The name that the model is served under.")
-# args, _ = parser.parse_known_args()
+parser = argparse.ArgumentParser(parents=[model_server.parser])
+parser.add_argument("--protocol", help="The protocol for the predictor", default="v2")
+parser.add_argument("--model_name", help="The name that the model is served under.")
+args, _ = parser.parse_known_args()
 
 if __name__ == "__main__":
-    model = MachineTranslation("nllb-600m")
+    model = MachineTranslation(args.model_name)
+    print("Starting Kserve server...")
     ModelServer().start([model])
